@@ -1,0 +1,14 @@
+score
+date/time
+weather
+distance and time between 2 places
+shutdown
+download file
+download torrent
+add/remove privilaged number
+get sys status
+reminders
+imdb rating and theme
+Send a msg every time sys starts
+List all files in directory
+
