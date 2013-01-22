@@ -10,5 +10,4 @@ get sys status
 reminders
 imdb rating and theme
 Send a msg every time sys starts
-List all files in directory
 
