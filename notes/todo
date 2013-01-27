@@ -1,0 +1,27 @@
+file => New => Device 
+
+
+To figure out 
+* How to check if the new sms count is unread
+* How to detect the device
+
+
+
+Cell info that can be displayed
+* IMEI
+* No of messages
+* Device File
+* Type of connection
+* Company name
+* Model Number
+
+To find the bluetooth address
+* $hcitool scan (Should find out a python way of doing it)
+
+Things to add in the second row of vbox1
+* New
+* Delete
+* Save Info
+* Options
+* Quit
+* Search Device
