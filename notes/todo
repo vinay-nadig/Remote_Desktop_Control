@@ -3,9 +3,7 @@ file => New => Device
 
 To figure out 
 * How to check if the new sms count is unread
-* How to detect the device
-
-
+* How to detect the device // No longer a problem since the user has to manually add the new phone
 
 Cell info that can be displayed
 * IMEI
@@ -25,3 +23,19 @@ Things to add in the second row of vbox1
 * Options
 * Quit
 * Search Device
+
+Things required to establish a new connection
+* port name (ttyACM0 etc)
+* connection name (at19200 etc)
+* Synchronize time(Boolean, usually Yes)
+
+To poll for sms
+* Keep a counter that has the current number of sms
+* Whenever sys sends a msg, increase the counter
+* Poll the smsstatus every minute
+* If the no in smsstatus > counter
+	then
+	retrieve all the sms and check if any of them is unread
+	if unread
+		then
+		parse
