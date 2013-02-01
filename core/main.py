@@ -10,6 +10,10 @@ import sqlite3
 import inspect
 import threading
 
+# Testing imports
+# Remove after completion
+from time import sleep
+
 # Get the root directory and add to sys path
 main_file = inspect.getfile(inspect.currentframe())
 par_dir = os.path.abspath(os.path.join(main_file, os.pardir))
@@ -69,6 +73,12 @@ class SMSGateway:
         self.exp3 = self.builder.get_object("expander3")
         self.stat_bar = self.builder.get_object("statusbar1")
         self.spinner1 = self.builder.get_object("spinner1")
+        self.l_imei = self.builder.get_object("l_IMEI")
+        self.l_sm = self.builder.get_object("l_SM")
+        self.l_df = self.builder.get_object("l_DF")
+        self.l_ct = self.builder.get_object("l_CT")
+        self.l_mf = self.builder.get_object("l_MF")
+        self.l_mn = self.builder.get_object("l_MN")
 
         # 3 Vboxes for 3 expanders
         self.vb1 = gtk.VBox(False, 0)
@@ -76,8 +86,11 @@ class SMSGateway:
         self.vb3 = gtk.VBox(False, 0)
 
         # Misc Data
+        # A list of dictionaries, each dic containing the statemachine
+        # object and the IMEI of the connected phone
         self.list_of_usb_connections = []
         self.list_of_bluetooth_connections = []
+
         self.stat_counter = 0
         self.list_of_usb_buttons = []
         self.list_of_bluetooth_buttons = []
@@ -189,6 +202,20 @@ class SMSGateway:
             gtk.gdk.threads_leave()
             self.update_status_bar('', False)
             return
+        finally:
+            # Check if the phone is already connected
+            if(sm.GetIMEI() in [conn["IMEI"] for conn in self.list_of_usb_connections]):
+                self.err_dialog.set_markup("Phone already connected!")
+                gtk.gdk.threads_enter()
+                self.run_dialog(self.err_dialog)
+                gtk.gdk.threads_leave()
+                return
+            if(sm.GetIMEI() in [conn["IMEI"] for conn in self.list_of_bluetooth_connections]):
+                self.err_dialog.set_markup("Phone already connected!")
+                gtk.gdk.threads_enter()
+                self.run_dialog(self.err_dialog)
+                gtk.gdk.threads_leave()
+                return
 
         # Parse the config file
         config = ConfigParser.ConfigParser()
@@ -200,26 +227,84 @@ class SMSGateway:
             sys.stderr.write("Make sure connection section is defined!")
 
         if(conn.startswith("a") and init_successful):
-            self.list_of_usb_connections.append(sm)
+            self.list_of_usb_connections.append({"SM_Obj" : sm, "IMEI" : sm.GetIMEI()})
             gtk.gdk.threads_enter()
             self.update_list_of_connection("usb")
-            self.update_phone_info()
             gtk.gdk.threads_leave()
             self.update_status_bar('', False)
             return
 
         if(conn.startswith("b") and init_successful):
-            self.list_of_bluetooth_connections.append(sm)
+            self.list_of_bluetooth_connections.append({"SM_Obj" : sm, "IMEI" : sm.GetIMEI()})
             gtk.gdk.threads_enter()
             self.update_list_of_connection("bluetooth")
-            self.update_phone_info()
             gtk.gdk.threads_leave()
             self.update_status_bar('', False)
             return
 
-    def update_phone_info(self):
-        # TODO 31 Jan, 2013
-        pass
+    def remove_connection(self, widget, data=None):
+        to_del_button = [button for button in self.list_of_usb_buttons if(button.get_active())]
+        if(to_del_button):
+
+            to_del_button[0].destroy()
+        self.reset_phone_info()
+
+
+    def update_phone_info(self, widget, conn):
+        # l_<any_name> = name of a label
+
+        try:
+            self.l_imei.set_text(conn["SM_Obj"].GetIMEI())
+        except:
+            self.l_imei.set_text("Unknown")
+
+        self.l_sm.set_text("#TODO")
+
+        try:
+            self.l_df.set_text(conn["SM_Obj"].GetConfig()["Device"])
+        except:
+            self.l_df.set_text("Unknown")
+
+        try:
+            temp_conn_name = conn["SM_Obj"].GetConfig()["Connection"]
+        except:
+            temp_conn_name = "Unknown"
+        if(temp_conn_name.lower().startswith("a")):
+            self.l_ct.set_text("USB")
+        elif(temp_conn_name.lower().startswith("b")):
+            self.l_ct.set_text("Bluetooth")
+        else:
+        # TODO
+            self.l_ct.set_text("Unknown")
+
+        try:
+            self.l_mf.set_text(conn["SM_Obj"].GetManufacturer())
+        except:
+            self.l_mf.set_text("Unknown")
+
+        try:
+            self.l_mn.set_text(conn["SM_Obj"].GetModel()[1])
+        except:
+            self.l_mn.set_text("Unknown")
+
+        # Set alignment
+        self.l_imei.set_alignment(0.0, 0.50)
+        self.l_sm.set_alignment(0.0, 0.50)
+        self.l_df.set_alignment(0.0, 0.50)
+        self.l_ct.set_alignment(0.0, 0.50)
+        self.l_mf.set_alignment(0.0, 0.50)
+        self.l_mn.set_alignment(0.0, 0.50)
+
+        self.l_imei.show_all()
+        self.l_sm.show_all()
+        self.l_df.show_all()
+        self.l_ct.show_all()
+        self.l_mf.show_all()
+        self.l_mn.show_all()
+
+        # Launch a new thread to set the Phone picture
+        # TODO
+
 
     def update_list_of_connection(self, type):
 
@@ -232,20 +317,22 @@ class SMSGateway:
             for child in self.vb1.get_children():
                 self.vb1.remove(child)
 
-            # Empty List of USB buttons
-            self.list_of_usb_buttons = []
+            # Empty the List of USB buttons
+#            self.list_of_usb_buttons = []
 
             for connection, index in zip(self.list_of_usb_connections, range(0, len(self.list_of_usb_connections))):
                 # If the phone is not recognized, take model name
-                l = connection.GetModel()[1] if(connection.GetModel()[0] == "unknown") else connection.GetModel()[0]
+                l = connection["SM_Obj"].GetModel()[1] if(connection["SM_Obj"].GetModel()[0] == "unknown") else connection["SM_Obj"].GetModel()[0]
 
                 temp_button = gtk.RadioButton(group=self.dummy_rad, label=l)
                 self.vb1.pack_start(temp_button, False, False, 0)
-                self.list_of_usb_buttons.append(temp_button)
+#                self.list_of_usb_buttons.append(temp_button)
+#                self.list_of_usb_buttons[index].connect("clicked", self.update_phone_info, self.list_of_usb_connections[index])
+                self.list_of_usb_connections[index]["button_obj"] = temp_button
+                self.list_of_usb_connections[index]["button_obj"].connect("clicked", self.update_phone_info, self.list_of_usb_connections[index])
             self.exp1.add(self.vb1)
             self.exp1.show_all()
             return
-
 
         if(type == "bluetooth"):
             # Clean up the expander and vbox before adding widgets
@@ -256,13 +343,16 @@ class SMSGateway:
             # Empty the list of bluetooth buttons
             self.list_of_bluetooth_buttons = []
 
-            for connection, index in zip(self.list_of_bluetooth_connections, range(0, len(self.list_of_bluetooth_connections))):
+            for connection, index in zip(self.list_of_bluetooth_connections, range(0, len(self.list_of_usb_connections))):
                 # If the phone name is not recognized, then take model name
-                l = connection.GetModel()[1] if(connection.GetModel()[0] == "unknown") else connection.GetModel()[0]
+                l = connection["SM_Obj"].GetModel()[1] if(connection["SM_Obj"].GetModel()[0] == "unknown") else connection["SM_Obj"].GetModel()[0]
 
                 temp_button = gtk.RadioButton(group=self.dummy_rad, label=l)
                 self.vb2.pack_start(temp_button, False, False, 0)
-                self.list_of_bluetooth_buttons.append(temp_button)
+#                self.list_of_bluetooth_buttons.append(temp_button)
+#                self.list_of_bluetooth_buttons[index].connect("clicked", self.update_phone_info, self.list_of_usb_connections[incex])
+                self.list_of_bluetooth_connections[index]["button_obj"] = temp_button
+                self.list_of_usb_connections[index]["button_obj"].connect("clicked", self.update_phone_info, self.list_of_usb_connections[index])
             self.exp2.add(self.vb2)
             self.exp2.show_all()
             return
