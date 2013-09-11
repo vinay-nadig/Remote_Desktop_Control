@@ -12,12 +12,13 @@ import threading
 import Queue
 import pkgutil
 import copy
-from datetime import datetime as dt
 import time
-
-# Testing imports
-# Remove after completion
+import textwrap
+import webbrowser
 from time import sleep
+from datetime import datetime as dt
+import re
+
 
 # Get the root directory and add to sys path
 main_file = inspect.getfile(inspect.currentframe())
@@ -33,11 +34,6 @@ except ImportError:
     print "Install gammu module please"
     exit()
 
-try:
-    import bluetooth
-except ImportError:
-    print "Install bluetooth module please"
-    exit()
 
 # Make sure pygtk version > 2.0
 pygtk.require('2.0')
@@ -48,8 +44,6 @@ if(os.getuid() != 0):
     exit()
 
 # Other imports
-from core import base
-from preferences import Preference as pref
 import scripts
 from scripts import *
 
@@ -74,6 +68,10 @@ for mod in _LIST_OF_MODULES:
 # Convert all members to lower
 _LIST_OF_CMD_NAMES = [x.lower() for x in _LIST_OF_CMD_NAMES]
 _LIST_OF_CMD_LONG_NAMES = [x.lower() for x in _LIST_OF_CMD_LONG_NAMES]
+
+_LIST_OF_MODULES = []
+for mod1, mod2 in zip(_LIST_OF_CMD_NAMES, _LIST_OF_CMD_LONG_NAMES):
+    _LIST_OF_MODULES.append({"Short_Name" : mod1, "Long_Name" : mod2})
 
 class SMSGateway:
     """ Main GUI Class """
@@ -103,6 +101,19 @@ class SMSGateway:
         self.pref_window = self.builder.get_object("dialog2")
         self.pref_vbox = self.builder.get_object("vbox5")
         self.pref_main_box = self.builder.get_object("dialog-vbox4")
+        self.sent_frame_align = self.builder.get_object("alignment3")
+        self.recieved_frame_align = self.builder.get_object("alignment4")
+        self.about_window = self.builder.get_object("aboutdialog1")
+        self.contact_button = self.builder.get_object("button9")
+        self.contact_window = self.builder.get_object("dialog1")
+        self.trusted_viewport = self.builder.get_object("viewport3")
+        self.privilaged_viewport = self.builder.get_object("viewport4")
+        self.trusted_vbox = gtk.VBox(False, 0)
+        self.privilaged_vbox = gtk.VBox(False, 0)
+        self.trusted_frame = self.builder.get_object("frame5")
+        self.privilaged_frame = self.builder.get_object("frame6")
+        self.add_number_window = self.builder.get_object("dialog3")
+        self.add_entry = self.builder.get_object("entry1")
 
         # 3 Vboxes for 3 expanders
         self.vb1 = gtk.VBox(False, 0)
@@ -121,10 +132,15 @@ class SMSGateway:
         self.msg_in = Queue.Queue()
         self.perm_msg_in = Queue.Queue()
         self.list_of_threads = []
+        self.msg_out = []
+        self.wrapper = textwrap.TextWrapper(width=25)
+        self.list_of_trusted_buttons = []
+        self.list_of_privilaged_buttons = []
+        self.pattern = re.compile("^n(a)+?(d)+?(i)+?(g)+?$")
 
         # Database to store preferences.
-        self.conn = sqlite3.connect(_DATABASE)
-        self.cur = self.conn.cursor()
+        self.con = sqlite3.connect(_DATABASE)
+        self.cur = self.con.cursor()
         self.cur.executescript(open(_SCHEMA, "r").read())
 
         # Declare stray widgets
@@ -137,6 +153,7 @@ class SMSGateway:
         # Set properties
         self.fcdialog1.set_default_response(gtk.RESPONSE_OK) 
         self.notebook.set_tab_pos(gtk.POS_LEFT)
+        self.contact_button.set_label("Contacts")
 
         # Connect signals defined in glade file.
         self.builder.connect_signals(self)
@@ -162,20 +179,27 @@ class SMSGateway:
             imei = self.list_of_preferences_objs[i]["imei"]
             max_msg = self.list_of_preferences_objs[i]["max_msg_spin_button"].get_value()
             sig = self.list_of_preferences_objs[i]["signature_entry"].get_text()
-            save_sent = self.list_of_preferences_objs[i]["save_sent_msg_cb"].get_active()
             number = ''
-            print imei, max_msg, sig, save_sent, number
             try:
-                self.cur.execute("INSERT INTO Preferences VALUES(?, ?, ?, ?, ?, ?)", (imei, number, max_msg, sig,  \
-                        save_sent, 0))
+                self.cur.execute("INSERT INTO Preferences VALUES(?, ?, ?, ?, ?)", (imei, number, max_msg, sig, 0))
             except sqlite3.IntegrityError:
-                self.cur.execute("UPDATE Preferences SET number=?, max_msg_day=?, signature=?, save_sent_msg=?   \
-                        WHERE imei=?", (number, max_msg, sig, save_sent, imei))
+                self.cur.execute("UPDATE Preferences SET number=?, max_msg_day=?, signature=?   \
+                        WHERE imei=?", (number, max_msg, sig, imei))
             finally:
-                self.conn.commit()
+                self.con.commit()
+
+    def launch_help(self, widget, data=None):
+        # Set the uid to the first non privilaged user
+        os.setuid(1000)
+        webbrowser.open_new_tab("https://sites.google.com/site/smsgatewayhelp/")
+        os.setuid(0)
 
     # On pressing preferences button
     def launch_preferences(self, widget, data=None):
+
+        # If there are no active connections
+        if(not len(self.list_of_usb_connections + self.list_of_bluetooth_connections)):
+            return
 
         # TODO
         # Set the preferences from the database
@@ -194,20 +218,18 @@ class SMSGateway:
             list_of_conn = self.list_of_usb_connections + self.list_of_bluetooth_connections
             for index in range(0, no_of_con):
                 l = list_of_conn[index]["button_obj"].get_label()
-                v, s, e, c1 = self.preferences_factory()
+                v, s, e = self.preferences_factory()
                 self.list_of_preferences_objs.append({"imei" : list_of_conn[index]["IMEI"],             \
-                        "max_msg_spin_button" : s, "signature_entry" : e, "save_sent_msg_cb" : c1})
+                        "max_msg_spin_button" : s, "signature_entry" : e})
                 self.notebook.append_page(v, tab_label=gtk.Label(l))
 
         for obj in self.list_of_preferences_objs:
-            res1 = cur.execute("select max_msg_day, signature, save_sent_msg from Preferences where imei=?", (obj["imei"],))
+            res1 = cur.execute("select max_msg_day, signature from Preferences where imei=?", (obj["imei"],))
             res1 = res1.fetchall()
             max_msg = res1[0][0] if res1[0][0] else 0
             sig = res1[0][1] if res1[0][1] else ""
-            save_msg = res1[0][2] if res1[0][2] else False
             obj["max_msg_spin_button"].set_value(max_msg)
             obj["signature_entry"].set_text(sig)
-            obj["save_sent_msg_cb"].set_active(save_msg)
 
         self.run_dialog(self.pref_window)
         con.close()
@@ -229,7 +251,6 @@ class SMSGateway:
         l3 = gtk.Label("messages")
         l2 = gtk.Label("Signature")
         entry1 = gtk.Entry(max=10)
-        cb1 = gtk.CheckButton(label="Save Messages")
         hbox2 = gtk.HBox(False, 0)
 
         # Set properties
@@ -250,10 +271,9 @@ class SMSGateway:
         hbox1.pack_start(l2)
         hbox1.pack_start(entry1)
         vbox1.pack_start(hbox1,False, False, 0)
-        vbox1.pack_start(cb1)
         frame1.add(hbox2)
         frame2.add(vbox1)
-        return vbox, s1, entry1, cb1
+        return vbox, s1, entry1
 
     # For getting the gammurc files for usb and bluetooth
 
@@ -268,12 +288,13 @@ class SMSGateway:
     # op = string "push" or "pop"
     # based on which data is written to
     # or removed from status bar
-    def update_status_bar(self, data, op):
+    def update_status_bar(self, data, op, timeout=0):
         gtk.gdk.threads_enter()
         if(op):
             self.spinner1.start()
             self.stat_counter += 1
             self.stat_bar.push(self.stat_counter, data)
+
         else:
             self.stat_bar.pop(self.stat_counter)
             self.stat_counter -= 1
@@ -414,13 +435,22 @@ class SMSGateway:
     # info display area.
     def update_phone_info(self, widget, conn):
         # l_<any_name> = name of a label
+        temp_res = None
 
         try:
-            self.l_imei.set_text(conn["SM_Obj"].GetIMEI())
+            imei = conn["SM_Obj"].GetIMEI()
+            self.l_imei.set_text(imei)
         except:
             self.l_imei.set_text("Unknown")
 
-        self.l_sm.set_text("#TODO")
+#        try:
+#            temp_res = self.cur.execute("SELECT msg_cntr FROM DateInfo where imei = ?", (imei,)).fetchall()
+#        except:
+#            self.l_ms.set_text("UNKNOWN")
+
+#        if(temp_res):
+#            self.l_ms.set_text(temp_res[0][0])
+
 
         try:
             self.l_df.set_text(conn["SM_Obj"].GetConfig()["Device"])
@@ -464,8 +494,108 @@ class SMSGateway:
         self.l_mf.show_all()
         self.l_mn.show_all()
 
-        # Launch a new thread to set the Phone picture
-        # TODO
+    def launch_about(self, widget, data=None):
+        # Has to be set here because glade interface for
+        # about dialog does not allow entering authors. (Bug)
+        self.about_window.set_authors(["Vinay Nadig", "Supreeth Akrura", "Sathya Sagar", "Shravan Suresh"])
+        self.run_dialog(self.about_window)
+
+    def add_number(self, widget, data=None):
+        self.add_entry.grab_focus()
+        self.add_entry.set_text('')
+        self.run_dialog(self.add_number_window)
+        no_to_add = self.add_entry.get_text()
+        no_to_add = self.clean_number(no_to_add)
+        if not no_to_add:
+            return
+        if widget.get_ancestor(gtk.Frame).get_label() == "Trusted":
+            try:
+                self.cur.execute("INSERT INTO Contacts VALUES(?, ?, ?, ?, ?)", (no_to_add, 0, 1, 0, 0))
+            except sqlite3.IntegrityError, e:
+                self.cur.execute("UPDATE Contacts SET Trusted=? WHERE Number=?", (1, no_to_add))
+
+        if widget.get_ancestor(gtk.Frame).get_label() == "Privilaged":
+            try:
+                self.cur.execute("INSERT INTO Contacts VALUES(?, ?, ?, ?, ?)", (no_to_add, 1, 1, 0, 0))
+            except sqlite3.IntegrityError, e:
+                self.cur.execute("UPDATE Contacts SET Privilaged=? WHERE Number=?", (1, no_to_add))
+        self.con.commit()
+
+        # Relaunch the contacts window.
+        self.launch_contacts(None, None)
+
+    def remove_contacts(self, widget, data=None):
+        if widget.get_ancestor(gtk.Frame).get_label() == "Trusted":
+            for button in self.list_of_trusted_buttons:
+                if button.get_active():
+                    no_to_remove = button.get_label()
+                    no_to_remove = self.clean_number(no_to_remove)
+                    self.cur.execute("DELETE FROM Contacts WHERE Number=?", (no_to_remove,))
+
+        if widget.get_ancestor(gtk.Frame).get_label() == "Privilaged":
+            for button in self.list_of_privilaged_buttons:
+                if button.get_active():
+                    no_to_remove = button.get_label()
+                    no_to_remove = self.clean_number(no_to_remove)
+                    self.cur.execute("UPDATE Contacts SET Privilaged=0 WHERE Number=?", (no_to_remove,))
+        self.con.commit()
+
+        # Relaunch the contacts window.
+        self.launch_contacts(None, None)
+
+    # number type = string
+    # return an int that has been reduced
+    # to the standard 10 digit phone number format
+    def clean_number(self, number):
+        if len(number) >= 10:
+            # Get the last 10 numbers
+            number = number[len(number)-10:]
+        else:
+            return None
+        if(number.isdigit()):
+            number = int(number)
+        else:
+            return None
+        return number
+
+    def launch_contacts(self, widget, data=None):
+        con = sqlite3.connect(_DATABASE)
+        cur = con.cursor()
+        trusted_res = cur.execute("SELECT Number FROM Contacts WHERE Trusted=?", (1,)).fetchall()
+        privilaged_res = cur.execute("SELECT Number FROM Contacts WHERE Privilaged=?", (1,)).fetchall()
+        con.close()
+
+        for child in self.trusted_vbox.get_children():
+            self.trusted_vbox.remove(child)
+
+        for child in self.privilaged_vbox.get_children():
+            self.privilaged_vbox.remove(child)
+
+        for child in self.trusted_viewport.get_children():
+            self.trusted_viewport.remove(child)
+
+        for child in self.privilaged_viewport.get_children():
+            self.privilaged_viewport.remove(child)
+
+        if(trusted_res or privilaged_res):
+            for number in trusted_res:
+                tb = gtk.ToggleButton(str(number[0]))
+                self.trusted_vbox.pack_start(tb, False, False, 0)
+                self.list_of_trusted_buttons.append(tb)
+
+            for number in privilaged_res:
+                tb = gtk.ToggleButton(str(number[0]))
+                self.privilaged_vbox.pack_start(tb, False, False,0)
+                self.list_of_privilaged_buttons.append(tb)
+        else:
+            l1 = gtk.Label("No Trusted numbers \nin database")
+            l2 = gtk.Label("No Privilaged numbers\nin database")
+            self.trusted_vbox.pack_start(l1, False, False, 0)
+            self.privilaged_vbox.pack_start(l2, False, False, 0)
+
+        self.trusted_viewport.add(self.trusted_vbox)
+        self.privilaged_viewport.add(self.privilaged_vbox)
+        self.run_dialog(self.contact_window)
 
 
     # Creates button objects for the phones, and
@@ -516,17 +646,77 @@ class SMSGateway:
             # TODO
             pass
 
-        self.initialize_dateinfo(self.list_of_usb_connections + self.list_of_bluetooth_connections)
-        self.launch_preferences(None, None)
+        self.initialize_database(self.list_of_usb_connections + self.list_of_bluetooth_connections)
+#        self.launch_preferences(None, None)
 
-#    def update_history(self, type):
-#        if(type == "Recieved"):
-#            l = self.perm_msg_in.qsize()
-#            vbox = pygtk.VBox(False, 0)
-#            for i in range(0, l):
-                
+    def update_history(self, type):
+        if(type == "Recieved"):
+            l = self.perm_msg_in.qsize()
+            vbox = gtk.VBox(False, 0)
+            scrolled_window = gtk.ScrolledWindow()
+            viewport = gtk.Viewport()
 
-    def initialize_dateinfo(self, list_of_con):
+            # Clean up the frame alignment
+            for child in self.recieved_frame_align.get_children():
+                self.recieved_frame_align.remove(child)
+
+            for i in range(0, l):
+                msg = self.perm_msg_in.get()
+                self.perm_msg_in.put(msg)
+                sep = gtk.HSeparator()
+                label_text = msg["Text"]
+                label_text = self.wrapper.fill(label_text)
+                label1 = gtk.Label("Text\t:\t" + label_text)
+                label1.set_alignment(0.0, 0.0)
+                label2 = gtk.Label("From\t:\t" + msg["From_no"])
+                label2.set_alignment(0.0, 0.0)
+                label3 = gtk.Label("Time\t:\t" + time.asctime())
+                label3.set_alignment(0.0, 0.0)
+                vbox.pack_start(label2, False, False, 0)
+                vbox.pack_start(label1, False, False, 0)
+                vbox.pack_start(label3, False, False, 0)
+                vbox.pack_start(sep, False, False, 0)
+            self.recieved_frame_align.add(scrolled_window)
+            scrolled_window.add(viewport)
+            viewport.add(vbox)
+            gtk.gdk.threads_enter()
+            self.recieved_frame_align.show_all()
+            gtk.gdk.threads_leave()
+
+        if(type == "Sent"):
+            l = len(self.msg_out)
+            vbox = gtk.VBox(False, 0)
+            scrolled_window = gtk.ScrolledWindow()
+            viewport = gtk.Viewport()
+
+            # Clean up the frame alignment
+            for child in self.sent_frame_align.get_children():
+                self.sent_frame_align.remove(child)
+
+            for i in range(0, l):
+                msg = self.msg_out[i]
+                sep = gtk.HSeparator()
+                label_text = msg["Text"]
+                label_text = self.wrapper.fill(label_text)
+                label1 = gtk.Label("Text\t:\t" + label_text)
+                label1.set_alignment(0.0, 0.0)
+                label2 = gtk.Label("To\t:\t" + msg["To_No"])
+                label2.set_alignment(0.0, 0.0)
+                label3 = gtk.Label("Time\t:\t" + time.asctime())
+                label3.set_alignment(0.0, 0.0)
+                vbox.pack_start(label2, False, False, 0)
+                vbox.pack_start(label1, False, False, 0)
+                vbox.pack_start(label3, False, False, 0)
+                vbox.pack_start(sep, False, False, 0)
+            self.sent_frame_align.add(scrolled_window)
+            scrolled_window.add(viewport)
+            viewport.add(vbox)
+            gtk.gdk.threads_enter()
+            self.sent_frame_align.show_all()
+            gtk.gdk.threads_leave()
+
+
+    def initialize_database(self, list_of_con):
         con = sqlite3.connect(_DATABASE)
         cur = con.cursor()
         for i in list_of_con:
@@ -534,6 +724,13 @@ class SMSGateway:
                 cur.execute("INSERT INTO DateInfo VALUES(?, ?, ?)", (i["IMEI"], 0, 0))
             except sqlite3.IntegrityError:
                 cur.execute("UPDATE DateInfo SET msg_cntr=?, last_used=? WHERE imei=?", (0, 0, i["IMEI"]))
+            finally:
+                con.commit()
+            try:
+                cur.execute("INSERT INTO Preferences VALUES(?, ?, ?, ?, ?)", (i["IMEI"], 0, 0, "", 0))
+            except sqlite3.IntegrityError:
+                # Leave the preferences be if it already has values
+                pass
             finally:
                 con.commit()
         con.close()
@@ -578,21 +775,45 @@ class Process_SMS(threading.Thread):
                 sms = self.sms_q.get()
                 text = sms["Text"]
                 to_no = sms["From_no"]
+                con = sqlite3.connect(_DATABASE)
+                cur = con.cursor()
+                temp_to_no = self.sms_gw.clean_number(to_no)
+                is_trusted = cur.execute("select Trusted from Contacts where Number=?", (temp_to_no,)).fetchall()
+                is_privilaged = cur.execute("select Privilaged from Contacts where Number=?", (temp_to_no,)).fetchall()
+                con.close()
                 options = text.split()[1:]
                 command = text.split()[0].lower()
-                if(command in _LIST_OF_CMD_NAMES or command in _LIST_OF_CMD_LONG_NAMES):
+
+                # TODO
+                # Remove the pattern match condition before demo
+                print command
+                print _LIST_OF_CMD_NAMES
+                print _LIST_OF_CMD_LONG_NAMES
+                if((command in _LIST_OF_CMD_NAMES or command in _LIST_OF_CMD_LONG_NAMES) and (is_trusted or is_privilaged)):
                     avail_conn, imei = self.get_available_connection()
+                    print "within the if condition"
+
                     if(avail_conn):
+                        print "got a connection"
                         con = sqlite3.connect(_DATABASE)
                         cur = con.cursor()
 
                         sig = cur.execute("SELECT signature FROM Preferences where imei=?", (imei,)).fetchall()[0][0]
-                        sig  = sig if (sig) else ""
-                        s = getattr(scripts, command)
+                        sig  = sig if sig else ""
+                        for dic in _LIST_OF_MODULES:
+                            if(dic["Long_Name"] == command or dic["Short_Name"] == command):
+                                s = getattr(scripts, dic["Long_Name"])
                         cmd_name = getattr(s, "_CMD_LONG_NAME")
                         cls = getattr(s, cmd_name)
                         obj = cls(options, avail_conn, to_no, sig)
+                        if obj.privilaged:
+                            if is_privilaged:
+                                obj.send_sms()
+                            else:
+                                return
                         obj.send_sms()
+                        self.sms_gw.msg_out.append({"Text" : obj.msg, "To_No" : to_no})
+                        self.sms_gw.update_history("Sent")
                         cur_cntr = cur.execute("SELECT msg_cntr from DateInfo where imei=?", (imei,)).fetchall()[0][0]
                         now = int(time.time())
                         cur.execute("UPDATE DateInfo SET msg_cntr=?, last_used=? where imei=?", (cur_cntr+1, now, imei))
@@ -657,7 +878,12 @@ class Poll_SMS(threading.Thread):
         self.sms_q = sms_q
         self.perm_sms_q = perm_sms_q
         self.sm = sm
+
         self.stat = self.sm.GetSMSStatus()
+            # TODO
+            # Show an error dialog and ask
+            # the user to reconnect the phone.
+
         self.counter = self.stat["PhoneUsed"] + self.stat["SIMUsed"]
         self.tmp_counter1 = self.counter
         self.sms_list = []
@@ -672,7 +898,10 @@ class Poll_SMS(threading.Thread):
     def run(self):
         while not self.stoprequest.isSet():
             sleep(5)
-            self.stat = self.sm.GetSMSStatus()
+            try:
+                self.stat = self.sm.GetSMSStatus()
+            except gammu.ERR_TIMEOUT, e:
+                continue
             self.counter = self.stat["PhoneUsed"] + self.stat["SIMUsed"]
             self.tmp_counter2 = self.counter
             temp_sms = []
@@ -692,6 +921,7 @@ class Poll_SMS(threading.Thread):
                 msg = temp_sms[0]
                 self.sms_q.put({"Text" : msg[0]["Text"], "From_no" : msg[0]["Number"]})
                 self.perm_sms_q.put({"Text" : msg[0]["Text"], "From_no" : msg[0]["Number"]})
+                self.sms_gw.update_history("Recieved")
                 self.tmp_counter1 = self.tmp_counter2
 
 if __name__ == "__main__":

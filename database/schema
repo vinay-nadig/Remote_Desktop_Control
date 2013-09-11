@@ -1,0 +1,29 @@
+/* Schema for the preferences database */
+
+/* trusted_privilaged constraint explanation :
+Privilaged  Trusted Explanation
+1           1       A number is both privilaged and trusted.        Makes Sense
+0           1       A number is not privilaged but only trusted.    Makes Sense
+1           0       A number is only privilaged but not trusted.    No Sense
+0           0       A number is neither trusted nor privilaged.     Makes Sense
+*/
+
+CREATE TABLE IF NOT EXISTS Preferences(
+	imei INT PRIMARY KEY,
+	number INT,
+	max_msg_day INT,
+	signature TEXT,
+	no_of_sent INT);
+
+CREATE TABLE IF NOT EXISTS DateInfo(
+	imei INT PRIMARY KEY,
+	msg_cntr INT,
+	last_used DATETIME);
+
+CREATE TABLE IF NOT EXISTS Contacts(
+	Number INT PRIMARY KEY,
+	Privilaged INT,
+	Trusted INT,
+	Total_Recieved INT,
+	Total_Sent INT,
+	CONSTRAINT trusted_privilaged CHECK (Privilaged <= Trusted));

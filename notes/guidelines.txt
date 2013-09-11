@@ -1,0 +1,15 @@
+* The name of the file should be <command_name>.py in small letters
+* The name of the class should be <command_name> in CamelCase.
+* The class should have a send sms function.
+* The class can have a generic function that implements the main functionality (get_score for example)
+* The module should have _CMD_NAME and _CMD_LONG_NAME compulsorily
+* The class will take the following parameters while being initialized :
+    * options - The options to be parsed. (format = list)
+    * sm - statemachine object corresponding to available phone.
+    * number - the number to which the msg should be sent.
+    * signature - to be appended to the msg
+* The class should have a privilaged attribute which is True if its a privilaged command and false otherwise.
+
+* Every module should have a class that derives from argparse.Argparse and override the error method.
+  the overriden method must have a null statement.
+

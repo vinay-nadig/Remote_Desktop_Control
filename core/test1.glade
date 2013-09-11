@@ -1,5 +1,6 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <requires lib="gtk+" version="2.24"/>
   <!-- interface-naming-policy project-wide -->
   <object class="GtkAboutDialog" id="aboutdialog1">
     <property name="can_focus">False</property>
@@ -97,7 +98,7 @@
                                 <property name="receives_default">True</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="use_stock">True</property>
-                                <signal handler="add_number" name="clicked" swapped="no"/>
+                                <signal name="clicked" handler="add_number" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -113,7 +114,7 @@
                                 <property name="receives_default">True</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="use_stock">True</property>
-                                <signal handler="remove_contacts" name="clicked" swapped="no"/>
+                                <signal name="clicked" handler="remove_contacts" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -195,7 +196,7 @@
                                 <property name="receives_default">True</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="use_stock">True</property>
-                                <signal handler="add_number" name="clicked" swapped="no"/>
+                                <signal name="clicked" handler="add_number" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -211,7 +212,7 @@
                                 <property name="receives_default">True</property>
                                 <property name="use_action_appearance">False</property>
                                 <property name="use_stock">True</property>
-                                <signal handler="remove_contacts" name="clicked" swapped="no"/>
+                                <signal name="clicked" handler="remove_contacts" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -343,7 +344,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="save_preferences" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="save_preferences" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -381,7 +382,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="max_length">13</property>
-            <property name="invisible_char">&#x2022;</property>
+            <property name="invisible_char">•</property>
             <property name="primary_icon_activatable">False</property>
             <property name="secondary_icon_activatable">False</property>
             <property name="primary_icon_sensitive">True</property>
@@ -490,7 +491,7 @@
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">SMS Gateway</property>
     <property name="icon">temp.gif</property>
-    <signal handler="on_main_window_destroy" name="destroy" swapped="no"/>
+    <signal name="destroy" handler="on_main_window_destroy" swapped="no"/>
     <child>
       <object class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -509,7 +510,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="add_new_device" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="add_new_device" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -525,7 +526,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="remove_connection" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="remove_connection" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -541,7 +542,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="launch_preferences" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="launch_preferences" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -557,7 +558,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="on_main_window_destroy" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="on_main_window_destroy" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -573,7 +574,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="image">image1</property>
-                <signal handler="launch_contacts" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="launch_contacts" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -758,7 +759,7 @@
                                       </object>
                                       <packing>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -772,7 +773,7 @@
                                         <property name="top_attach">1</property>
                                         <property name="bottom_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -786,7 +787,7 @@
                                         <property name="top_attach">2</property>
                                         <property name="bottom_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -800,7 +801,7 @@
                                         <property name="top_attach">4</property>
                                         <property name="bottom_attach">5</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -814,7 +815,7 @@
                                         <property name="top_attach">5</property>
                                         <property name="bottom_attach">6</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -828,7 +829,7 @@
                                         <property name="left_attach">1</property>
                                         <property name="right_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -844,7 +845,7 @@
                                         <property name="top_attach">1</property>
                                         <property name="bottom_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -860,7 +861,7 @@
                                         <property name="top_attach">2</property>
                                         <property name="bottom_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -876,7 +877,7 @@
                                         <property name="top_attach">3</property>
                                         <property name="bottom_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -892,7 +893,7 @@
                                         <property name="top_attach">4</property>
                                         <property name="bottom_attach">5</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -908,7 +909,7 @@
                                         <property name="top_attach">5</property>
                                         <property name="bottom_attach">6</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -921,7 +922,7 @@
                                         <property name="left_attach">2</property>
                                         <property name="right_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -936,7 +937,7 @@
                                         <property name="top_attach">1</property>
                                         <property name="bottom_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -951,7 +952,7 @@
                                         <property name="top_attach">2</property>
                                         <property name="bottom_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -966,7 +967,7 @@
                                         <property name="top_attach">3</property>
                                         <property name="bottom_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -981,7 +982,7 @@
                                         <property name="top_attach">4</property>
                                         <property name="bottom_attach">5</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -996,7 +997,7 @@
                                         <property name="top_attach">5</property>
                                         <property name="bottom_attach">6</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -1010,7 +1011,7 @@
                                         <property name="top_attach">3</property>
                                         <property name="bottom_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
-                                        <property name="y_options"/>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                   </object>
@@ -1213,7 +1214,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="launch_help" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="launch_help" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -1229,7 +1230,7 @@
                 <property name="receives_default">True</property>
                 <property name="use_action_appearance">False</property>
                 <property name="use_stock">True</property>
-                <signal handler="launch_about" name="clicked" swapped="no"/>
+                <signal name="clicked" handler="launch_about" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>

@@ -39,3 +39,65 @@ To poll for sms
 	if unread
 		then
 		parse
+
+Preferences that can be saved
+Global Preferences
+	* Max no of msgs that can be sent per day
+	* Max no of msgs that can be sent for a duration
+Preferences per phone
+	* Signature
+	* Max no of msgs that can be sent per day
+	* Max no of msgs that can be sent for a duration
+	* Save sent messages?
+
+Database
+Schema :
+Create new table Phone{
+	IMEI str?,(or long is better?) #primary key
+	max_no_msgs_per_day int,
+	Signature str
+}
+
+Sequence of call once "New" button is pressed
+* add_new_device() -> Runs the selection_dialog1
+
+* On pressing the "OK" button of the selection_dialog1, choose_config_file() is run
+* choose_config_file()
+	* Runs the file selection dialog fcdialog1 and stores
+	config file address in self.(usb/bluetooth)_config_file
+	* self.launch_new_connection() is called.
+
+* launch_new_connection()
+	* Calls self.create_new_connection() in a new thread.
+
+* create_new_connection()
+	* Update the status bar
+	* try reading the config file and initializing
+	if there are any errors, show the error dialog
+	and return.
+	* If the initialization is successful, check if
+	the phone is already connected, if yes, show error
+	dialog and return.
+	* If the initialization is successful, add the statemachine
+	object and the imei number of the phone to 
+	self.list_of_(usb/bluetooth)_connections(as a dictionary)
+		* dictionary structure :
+		{ "SM_Obj" : <obj>, "IMEI" : <imei>}
+	* Call update_list_of_connection()
+
+* update_list_of_connections()
+	* clean up the expanders and the vertical box container
+	at the start.
+	* Create gtk.RadioButton() for each phone connected with
+	the phone name as the label.
+	* Each button has the self.dummy_rad_button as its group
+	* Add the button obj to the dictionary in
+	self.list_of_(usb/bluetooth)_connections
+
+* update_phone_info()
+	* Called when the radiobutton corresponding to the
+	phone is clicked.
+	* Updates the phone info on the main display area.
+	* Get the info from the StateMachine obj and 
+	update all the labels
+
